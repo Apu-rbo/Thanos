@@ -9,17 +9,94 @@ import { getLevelingConfig, getUserLevelData } from '../services/leveling.js';
 import { addXp } from '../services/xpSystem.js';
 import { checkRateLimit } from '../utils/rateLimiter.js';
 
+const spamTracker = new Map();
 const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
 const MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
 
 export default {
   name: Events.MessageCreate,
   async execute(message, client) {
-    try {
-      
-      if (message.author.bot || !message.guild) return;
+  try {
 
-      await handleLeveling(message, client);
+    if (message.author.bot || !message.guild) return;
+
+    // Anti-Spam
+    const userId = message.author.id;
+    const now = Date.now();
+
+    if (!global.spamTracker) {
+      global.spamTracker = new Map();
+    }
+
+    if (!global.spamTracker.has(userId)) {
+      global.spamTracker.set(userId, []);
+    }
+
+    const timestamps = global.spamTracker.get(userId);
+
+    timestamps.push(now);
+
+    const recentMessages = timestamps.filter(
+      time => now - time < 5000
+    );
+
+    global.spamTracker.set(userId, recentMessages);
+
+    if (recentMessages.length >= 6) {
+      try {
+        await message.member.timeout(
+          5 * 60 * 1000,
+          'Spam detected'
+        );
+
+        await message.channel.send(
+          `${message.author} has been timed out for spamming.`
+        );
+
+        global.spamTracker.delete(userId);
+        return;
+      } catch (err) {
+        logger.error(err);
+      }
+    }
+
+    // Mention Spam
+    if (message.mentions.users.size >= 5) {
+      try {
+        await message.member.timeout(
+          10 * 60 * 1000,
+          'Mention spam'
+        );
+
+        await message.reply(
+          'Mention spam detected.'
+        );
+
+        return;
+      } catch (err) {
+        logger.error(err);
+      }
+    }
+
+    // Invite Spam
+    const inviteRegex =
+      /(discord\.gg|discord\.com\/invite)/i;
+
+    if (inviteRegex.test(message.content)) {
+      try {
+        await message.delete();
+
+        await message.channel.send(
+          `${message.author}, invite links are not allowed.`
+        );
+
+        return;
+      } catch (err) {
+        logger.error(err);
+      }
+    }
+
+    await handleLeveling(message, client);
     } catch (error) {
       logger.error('Error in messageCreate event:', error);
     }
