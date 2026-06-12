@@ -14,6 +14,14 @@ import { logger } from '../utils/logger.js';
 export default {
     name: 'channelDelete',
     async execute(channel, client) {
+        const antiNukeEnabled =
+  await client.db.get(
+    `antinuke:${channel.guild.id}`
+  );
+
+if (!antiNukeEnabled) {
+  return;
+}
         try {
   const logs = await channel.guild.fetchAuditLogs({
     limit: 1,
