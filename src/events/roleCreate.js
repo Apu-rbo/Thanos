@@ -11,6 +11,14 @@ export default {
   async execute(role) {
     try {
       if (!role.guild) return;
+      const antiNukeEnabled =
+  await role.client.db.get(
+    `antinuke:${role.guild.id}`
+  );
+
+if (!antiNukeEnabled) {
+  return;
+}
 
 
       const logs = await role.guild.fetchAuditLogs({
