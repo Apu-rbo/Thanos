@@ -442,4 +442,142 @@ export class ModerationService {
       throw error;
     }
   }
+  static tempbanKey(guildId, userId) {
+    return `temp:tempban:${guildId}:${userId}`;
+  }
+
+  static tempbanIndexKey(guildId) {
+    return `cache:tempban_index:${guildId}`;
+  }
+
+  static async tempbanUser({
+    client,
+    guild,
+    user,
+    moderator,
+    durationMs,
+    reason = 'No reason provided',
+    deleteDays = 0
+  }) {
+    try {
+      if (!guild || !user || !moderator || !durationMs) {
+        throw new TitanBotError(
+          'Missing required parameters',
+          ErrorTypes.VALIDATION,
+          'Guild, user, moderator, and duration are required'
+        );
+      }
+
+      const banResult = await this.banUser({ guild, user, moderator, reason, deleteDays });
+
+      const expiresAt = Date.now() + durationMs;
+      const ttlSeconds = Math.ceil(durationMs / 1000);
+
+      await client.db.set(
+        this.tempbanKey(guild.id, user.id),
+        {
+          guildId: guild.id,
+          userId: user.id,
+          moderatorId: moderator.id,
+          reason,
+          expiresAt,
+          caseId: banResult.caseId
+        },
+        ttlSeconds
+      );
+
+      const index = (await client.db.get(this.tempbanIndexKey(guild.id))) || [];
+      if (!index.includes(user.id)) {
+        index.push(user.id);
+        await client.db.set(this.tempbanIndexKey(guild.id), index);
+      }
+
+      logger.info(`User temp-banned: ${user.tag} by ${moderator.user.tag} in ${guild.name} for ${ttlSeconds}s`);
+
+      return {
+        success: true,
+        caseId: banResult.caseId,
+        user: user.tag,
+        reason,
+        expiresAt
+      };
+    } catch (error) {
+      logger.error('Error temp-banning user:', error);
+      throw error;
+    }
+  }
+
+  static async checkExpiredTempbans(client) {
+    if (!client?.db) return;
+
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        const index = (await client.db.get(this.tempbanIndexKey(guild.id))) || [];
+        if (index.length === 0) continue;
+
+        const remaining = [];
+        for (const userId of index) {
+          const record = await client.db.get(this.tempbanKey(guild.id, userId));
+
+          if (!record) {
+            try {
+              const bans = await guild.bans.fetch();
+              if (bans.has(userId)) {
+                await guild.members.unban(userId, 'Temporary ban expired');
+
+                await logModerationAction({
+                  client,
+                  guild,
+                  event: {
+                    action: 'Member Unbanned (Tempban Expired)',
+                    target: userId,
+                    executor: `${client.user.tag} (${client.user.id})`,
+                    reason: 'Temporary ban duration elapsed',
+                    metadata: { userId, automatic: true }
+                  }
+                });
+
+                logger.info(`Tempban expired, unbanned ${userId} in ${guild.name}`);
+              }
+            } catch (err) {
+              logger.warn(`Failed to auto-unban ${userId} in ${guild.name}:`, err.message);
+            }
+            continue;
+          }
+
+          if (record.expiresAt && record.expiresAt <= Date.now()) {
+            try {
+              await guild.members.unban(userId, 'Temporary ban expired');
+
+              await logModerationAction({
+                client,
+                guild,
+                event: {
+                  action: 'Member Unbanned (Tempban Expired)',
+                  target: userId,
+                  executor: `${client.user.tag} (${client.user.id})`,
+                  reason: 'Temporary ban duration elapsed',
+                  metadata: { userId, automatic: true }
+                }
+              });
+
+              await client.db.delete(this.tempbanKey(guild.id, userId));
+              logger.info(`Tempban expired, unbanned ${userId} in ${guild.name}`);
+            } catch (err) {
+              logger.warn(`Failed to auto-unban ${userId} in ${guild.name}:`, err.message);
+            }
+            continue;
+          }
+
+          remaining.push(userId);
+        }
+
+        if (remaining.length !== index.length) {
+          await client.db.set(this.tempbanIndexKey(guild.id), remaining);
+        }
+      } catch (error) {
+        logger.error(`Error checking expired tempbans for ${guild.name}:`, error);
+      }
+    }
+  }
 }
