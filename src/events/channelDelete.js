@@ -1,6 +1,3 @@
-import { AuditLogEvent } from 'discord.js';
-import { trackAction } from '../utils/antiNuke.js';
-
 import { 
     getJoinToCreateConfig, 
     removeJoinToCreateTrigger,
@@ -14,35 +11,6 @@ import { logger } from '../utils/logger.js';
 export default {
     name: 'channelDelete',
     async execute(channel, client) {
-        try {
-  const logs = await channel.guild.fetchAuditLogs({
-    limit: 1,
-    type: AuditLogEvent.ChannelDelete
-  });
-
-  const entry = logs.entries.first();
-
-  if (entry) {
-    const count = trackAction(entry.executor.id);
-
-    if (count >= 3) {
-      const member =
-        await channel.guild.members.fetch(
-          entry.executor.id
-        );
-
-      await member.roles.set([]);
-
-      logger.warn(
-        `ANTI-NUKE: ${entry.executor.tag} mass-deleted channels`
-      );
-
-      return;
-    }
-  }
-} catch (err) {
-  logger.error(err);
-}
         // Handle ticket text channel deletion
         if (channel.type === 0 && channel.guild) {
             try {
