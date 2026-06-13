@@ -101,7 +101,7 @@ export default {
 async function handleSetup(interaction, guild, client) {
     const verificationChannel = interaction.options.getChannel("verification_channel");
     const verifiedRole = interaction.options.getRole("verified_role");
-    const message = interaction.options.getString("message") || botConfig.verification.defaultMessage;
+    const message = (interaction.options.getString("message") || botConfig.verification.defaultMessage).replace(/\\n/g, '\n');
     const buttonText = interaction.options.getString("button_text") || botConfig.verification.defaultButtonText;
     const botMember = guild.members.me;
 
