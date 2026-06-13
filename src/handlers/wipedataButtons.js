@@ -32,7 +32,6 @@ const wipedataConfirmHandler = {
         `birthday:${guildId}:${userId}`,
         `balance:${guildId}:${userId}`,
         `user:${guildId}:${userId}`,
-        `leveling:${guildId}:${userId}`,
         `crimexp:${guildId}:${userId}`,
         `robxp:${guildId}:${userId}`,
         `crime_cooldown:${guildId}:${userId}`,
