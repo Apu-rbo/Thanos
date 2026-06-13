@@ -303,8 +303,11 @@ export default {
                         { name: 'Status', value: enabled ? '✅ Enabled' : '❌ Disabled' }
                     );
 
-                if (enabled && previewMessage) {
-                    embed.addFields({ name: 'Message Preview', value: previewMessage });
+              if (enabled && previewMessage) {
+                    const truncatedPreview = previewMessage.length > 1024
+                        ? `${previewMessage.substring(0, 1021)}...`
+                        : previewMessage;
+                    embed.addFields({ name: 'Message Preview', value: truncatedPreview });
                 }
 
                 if (enabled) {
