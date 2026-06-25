@@ -56,6 +56,16 @@ ThanosBot offers a complete suite of tools for Discord server management and com
 - **Emoji Selection** - Reaction-based system
 - **Multi-role Support** - Multiple role options
 
+### Logging
+- **Event Logging** - Track message edits, deletes, joins, leaves and more
+- **Customizable Channels** - Choose what gets logged and where
+- **Audit Trail** - Keep a clear record of server activity
+
+### Verification
+- **Member Verification** - Gate access until users verify
+- **Custom Verification Flow** - Configure how new members get verified
+- **Anti-bot Protection** - Reduce raid and bot account risks
+
 </td>
 <td width="50%" valign="top">
 
@@ -83,6 +93,16 @@ ThanosBot offers a complete suite of tools for Discord server management and com
 - **Welcome Messages** - Greet new members
 - **Auto Roles** - Assign roles on join
 - **Custom Embeds** - Personalized messages
+
+### Voice Channels
+- **Join to Create** - Dynamic temporary voice channels
+- **Voice Stats** - Track voice activity
+- **Auto Cleanup** - Empty channels are removed automatically
+
+### Community Tools
+- **Member Engagement** - Tools to keep your community active
+- **Applications** - Let members apply for roles or positions
+- **Server Tools** - General-purpose utilities for community management
 
 </td>
 </tr>
