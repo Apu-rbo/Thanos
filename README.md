@@ -1,8 +1,8 @@
-# TitanBot - Ultimate Discord Bot
+# ThanosBot - Ultimate Discord Bot
 
-**TitanBot** is a powerful, feature-rich Discord bot designed to enhance your server experience with comprehensive moderation tools, engaging economy systems, utility features, and much more. Built with modern Discord.js v14 and PostgreSQL for optimal performance and data persistence.
+**ThanosBot** is a powerful, feature-rich Discord bot designed to enhance your server experience with comprehensive moderation tools, Valorant integration, utility features, and much more. Built with modern Discord.js v14 and PostgreSQL for optimal performance and data persistence.
 
-[![Support Server](https://img.shields.io/badge/-Support%20Server-%235865F2?logo=discord&logoColor=white&style=flat-square&logoWidth=20)](https://discord.gg/8kJBYhTGW9)
+[![Support Server](https://img.shields.io/badge/-Support%20Server-%235865F2?logo=discord&logoColor=white&style=flat-square&logoWidth=20)](https://discord.gg/9WftGABPde)
 [![Discord.js](https://img.shields.io/npm/v/discord.js?style=flat-square&labelColor=%23202225&color=%23202225&logo=npm&logoColor=white&logoWidth=20)](https://www.npmjs.com/package/discord.js)
 ![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-%23336791?logo=postgresql&logoColor=white&style=flat-square&logoWidth=20)
 
@@ -11,14 +11,14 @@
 - [Features Overview](#features-overview)
 - [Quick Setup](#quick-setup)
 - [Manual Installation Steps](#manual-installation-steps)
-- [Support Server](https://discord.gg/QnWNz2dKCE)
+- [Support Server](https://discord.gg/9WftGABPde)
 - [Required Bot Intents](#bot-intents)
 - [Contributing](#contributing)
 
 <a name="features-overview"></a>
 ## Features Overview
 
-TitanBot offers a complete suite of tools for Discord server management and community engagement:
+ThanosBot offers a complete suite of tools for Discord server management and community engagement:
 
 <table>
 <tr>
@@ -28,11 +28,13 @@ TitanBot offers a complete suite of tools for Discord server management and comm
 - **Mass Actions** - Bulk ban/kick capabilities
 - **User Notes** - Keep detailed moderation records
 - **Case Management** - View and track all mod actions
+- **Message Tools** - Clear messages by amount or user
+- **Message Builder** - Send custom messages or embeds to any channel or DM
 
-### Economy System
-- **Shop & Inventory** - Buy and manage items
-- **Gambling** - Risk it for rewards
-- **Pay System** - Transfer money between users
+### Valorant Integration
+- **Stat Lookup** - Check rank, RR, and recent match history
+- **Auto Rank Roles** - Automatically assign Discord roles based on in-game rank
+- **Scheduled Sync** - Ranks refresh automatically every 30 minutes
 
 ### Fun & Entertainment
 - **Random Facts** - Learn something new
@@ -89,18 +91,19 @@ TitanBot offers a complete suite of tools for Discord server management and comm
 <a name="quick-setup"></a>
 ## Quick Setup (Recommended for non-coders)
 
-### Video Tutorial
-For a detailed step-by-step setup guide, watch our comprehensive video tutorial:
-[**TitanBot Setup Tutorial**](https://www.youtube.com/@TouchDisc)
+Need help setting up ThanosBot? Join our support server and reach out to the bot owner directly:
+
+- **Support Server:** [discord.gg/9WftGABPde](https://discord.gg/9WftGABPde)
+- **Bot Owner:** [@thanosx100](https://discord.com/users/thanosx100)
 
 ## Docker Deployment (Recommended)
 
-TitanBot is fully containerized for easy deployment.
+ThanosBot is fully containerized for easy deployment.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/codebymitch/TitanBot.git
-   cd TitanBot
+   git clone https://github.com/Apu-rbo/Tazzbot.git
+   cd Tazzbot
    ```
 
 2. **Configure environment variables:**
@@ -113,14 +116,6 @@ TitanBot is fully containerized for easy deployment.
 
 This will start both the bot and a persistent PostgreSQL database.
 
-### Using GitHub Container Registry
-
-The bot is automatically published to GitHub Container Registry on every push to main.
-
-```bash
-docker pull ghcr.io/codebymitch/titanbot:main
-```
-
 <a name="manual-installation-steps"></a>
 ## Manual Installation Steps
 
@@ -128,11 +123,12 @@ docker pull ghcr.io/codebymitch/titanbot:main
 - Node.js 18.0.0 or higher
 - PostgreSQL server (recommended) or memory storage fallback
 - Discord bot application with proper intents
+- HenrikDev API key (for Valorant features) - get one free at [docs.henrikdev.xyz](https://docs.henrikdev.xyz)
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/codebymitch/TitanBot.git
-   cd TitanBot
+   git clone https://github.com/Apu-rbo/Tazzbot.git
+   cd Tazzbot
    ```
 
 2. **Install Dependencies**
@@ -151,11 +147,14 @@ docker pull ghcr.io/codebymitch/titanbot:main
    CLIENT_ID=your_discord_client_id_here
    GUILD_ID=your_discord_guild_id_here
 
+   # Valorant Integration
+   HENRIK_API_KEY=your_henrikdev_api_key_here
+
    # PostgreSQL Configuration (Primary Database)
-   POSTGRES_URL=postgresql://postgres:yourpassword@localhost:5432/titanbot
+   POSTGRES_URL=postgresql://postgres:yourpassword@localhost:5432/thanosbot
    POSTGRES_HOST=localhost
    POSTGRES_PORT=5432
-   POSTGRES_DB=titanbot
+   POSTGRES_DB=thanosbot
    POSTGRES_USER=postgres
    POSTGRES_PASSWORD=yourpassword
    ```
@@ -164,7 +163,7 @@ docker pull ghcr.io/codebymitch/titanbot:main
    - `NODE_ENV=production`
    - `LOG_LEVEL=warn` for a clean production console (critical issues + startup status)
    - `LOG_LEVEL=info` if you want more detailed operational logs
-   - If your chosen `PORT` is already used, TitanBot automatically tries the next port(s)
+   - If your chosen `PORT` is already used, ThanosBot automatically tries the next port(s)
 
    Environment options reference:
    - `NODE_ENV`: `development`, `production`, `test` (any non-`production` value is treated as non-production)
@@ -185,10 +184,10 @@ docker pull ghcr.io/codebymitch/titanbot:main
 4. **Setup PostgreSQL Database** (Optional but recommended)
    ```bash
    # Create database and user
-   createdb titanbot
-   createuser titanbot
-   psql -c "ALTER USER titanbot PASSWORD 'yourpassword';"
-   psql -c "GRANT ALL PRIVILEGES ON DATABASE titanbot TO titanbot;"
+   createdb thanosbot
+   createuser thanosbot
+   psql -c "ALTER USER thanosbot PASSWORD 'yourpassword';"
+   psql -c "GRANT ALL PRIVILEGES ON DATABASE thanosbot TO thanosbot;"
    ```
 
 5. **Test Database Connection**
@@ -203,7 +202,7 @@ docker pull ghcr.io/codebymitch/titanbot:main
 <a name="bot-intents"></a>
 
 ## Required Bot Intents
-TitanBot requires the following Discord intents:
+ThanosBot requires the following Discord intents:
 - **Guilds**
 - **Guild Messages**
 - **Message Content**
@@ -224,7 +223,6 @@ TitanBot requires the following Discord intents:
 - **Manage Channels**
 - **Manage Roles**
 - **Kick Members**
-- **Manage Messages**
 - **Ban Members**
 - **Moderate Members**
 - **Connect**
@@ -232,7 +230,7 @@ TitanBot requires the following Discord intents:
 <a name="contributing"></a>
 ## Contributing
 
-We welcome contributions to TitanBot! Here's how you can help:
+We welcome contributions to ThanosBot! Here's how you can help:
 
 1. **Fork the repository**
 2. **Create a feature branch**
@@ -248,10 +246,10 @@ We welcome contributions to TitanBot! Here's how you can help:
 
 ## License
 
-TitanBot is released under the MIT License. See [LICENSE](LICENSE) for details.
+ThanosBot is released under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Thank You
 
-Thank you for choosing TitanBot for your Discord server! We're constantly working to improve and add new features based on community feedback.
+Thank you for choosing ThanosBot for your Discord server! We're constantly working to improve and add new features based on community feedback.
 
-*Last updated: May 2026*
+*Last updated: June 2026*
