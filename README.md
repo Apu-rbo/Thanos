@@ -102,8 +102,8 @@ ThanosBot is fully containerized for easy deployment.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Apu-rbo/Tazzbot.git
-   cd Tazzbot
+   git clone https://github.com/Apu-rbo/Thanos.git
+   cd Thanos
    ```
 
 2. **Configure environment variables:**
@@ -127,8 +127,8 @@ This will start both the bot and a persistent PostgreSQL database.
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/Apu-rbo/Tazzbot.git
-   cd Tazzbot
+   git clone https://github.com/Apu-rbo/Thanos.git
+   cd Thanos
    ```
 
 2. **Install Dependencies**
