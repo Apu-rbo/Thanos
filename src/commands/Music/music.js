@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { QueueRepeatMode } from 'discord-player';
+import { QueueRepeatMode, QueryType } from 'discord-player';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { createEmbed, successEmbed, errorEmbed } from '../../utils/embeds.js';
 import { handleInteractionError } from '../../utils/errorHandler.js';
@@ -68,9 +68,11 @@ export default {
 
                 await InteractionHelper.safeDefer(interaction);
                 const query = interaction.options.getString('query');
+                const isUrl = /^https?:\/\//i.test(query.trim());
 
                 try {
                     const { track } = await player.play(voiceChannel, query, {
+                        searchEngine: isUrl ? QueryType.AUTO : QueryType.YOUTUBE_SEARCH,
                         nodeOptions: {
                             metadata: { channel: interaction.channel },
                             selfDeaf: true,
