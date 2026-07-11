@@ -70,9 +70,12 @@ export default {
                 const query = interaction.options.getString('query');
                 const isUrl = /^https?:\/\//i.test(query.trim());
 
+                // YouTube blocks most cloud/datacenter IPs (Render included) with 429 errors.
+                // SoundCloud does not have this restriction, so it's used as the default
+                // for plain-text searches. Direct YouTube URLs still work when pasted.
                 try {
                     const { track } = await player.play(voiceChannel, query, {
-                        searchEngine: isUrl ? QueryType.AUTO : QueryType.YOUTUBE_SEARCH,
+                        searchEngine: isUrl ? QueryType.AUTO : QueryType.SOUNDCLOUD_SEARCH,
                         nodeOptions: {
                             metadata: { channel: interaction.channel },
                             selfDeaf: true,
@@ -90,7 +93,7 @@ export default {
                 } catch (err) {
                     logger.error('[Music] Play error:', err);
                     return InteractionHelper.safeEditReply(interaction, {
-                        embeds: [errorEmbed('Playback Failed', `Couldn't play that: ${err.message || 'No results found or source unavailable.'}`)],
+                        embeds: [errorEmbed('Playback Failed', `Couldn't play that: ${err.message || 'No results found.'}\n\nTry a different search term, or paste a direct SoundCloud/YouTube link.`)],
                     });
                 }
             }
