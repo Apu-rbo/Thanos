@@ -1,8 +1,5 @@
 import { Player } from 'discord-player';
-import extractorPkg from '@discord-player/extractor';
 import { logger } from '../utils/logger.js';
-
-const { DefaultExtractors } = extractorPkg;
 
 let playerInstance = null;
 
@@ -17,7 +14,7 @@ export async function initializePlayer(client) {
     });
 
     try {
-        await playerInstance.extractors.loadMulti(DefaultExtractors);
+        await playerInstance.extractors.loadDefault();
         logger.info('[Music] Extractors loaded (YouTube, SoundCloud, Spotify metadata, Vimeo, Attachment).');
     } catch (err) {
         logger.error('[Music] Failed to load extractors:', err);
