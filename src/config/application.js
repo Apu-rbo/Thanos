@@ -110,7 +110,7 @@ const appConfig = {
     fun: true,                      
 
     
-    music: false,                   
+    music: true,                   
   },
 
   env: process.env.NODE_ENV || "development",
