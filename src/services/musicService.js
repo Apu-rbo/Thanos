@@ -1,6 +1,8 @@
 import { Player } from 'discord-player';
-import { DefaultExtractors } from '@discord-player/extractor';
+import extractorPkg from '@discord-player/extractor';
 import { logger } from '../utils/logger.js';
+
+const { DefaultExtractors } = extractorPkg;
 
 let playerInstance = null;
 
