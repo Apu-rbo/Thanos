@@ -13,6 +13,7 @@ import { logger, startupLog, shutdownLog } from './utils/logger.js';
 import { checkBirthdays } from './services/birthdayService.js';
 import { checkGiveaways } from './services/giveawayService.js';
 import { loadCommands, registerCommands as registerSlashCommands } from './handlers/commandLoader.js';
+import { setupReactionRoleListeners } from './handlers/reactionRoles.js';
 
 class TitanBot extends Client {
   constructor() {
@@ -31,6 +32,11 @@ class TitanBot extends Client {
         
         
         GatewayIntentBits.GuildBans,                    
+      ],
+      partials: [
+        Partials.Message,
+        Partials.Reaction,
+        Partials.User,
       ],
     });
 
