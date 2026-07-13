@@ -1,3 +1,5 @@
+// Keep your existing validation helper imports here at the top...
+
 export async function createReactionRoleMessage(client, guildId, channelId, messageId, roleIds, options = {}) {
     try {
         validateGuildId(guildId);
@@ -69,17 +71,23 @@ export async function createReactionRoleMessage(client, guildId, channelId, mess
     }
 }
 
+// 🟢 ADD ALIAS EXPORT TO FIX CRASH IN EXTERNAL FILES
+export { createReactionRoleMessage as addReactionRole };
+
 export function parseEmoji(emojiString) {
     if (!emojiString || typeof emojiString !== 'string') return null;
 
     const trimmed = emojiString.trim();
+    
+    // Handles standard custom emojis (<:name:id>) and animated ones (<a:name:id>)
     const customMatch = trimmed.match(/^<a?:\w+:(\d+)>$/);
-
     if (customMatch) {
         return { key: customMatch[1], reactable: trimmed };
     }
 
-    if (trimmed.length > 0 && trimmed.length <= 20 && !/^[a-zA-Z0-9]+$/.test(trimmed)) {
+    // Handles native unicode emojis cleanly
+    const nativeEmojiRegex = /\p{Extended_Pictographic}/u;
+    if (nativeEmojiRegex.test(trimmed)) {
         return { key: trimmed, reactable: trimmed };
     }
 
