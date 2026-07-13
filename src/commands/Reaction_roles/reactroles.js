@@ -21,6 +21,45 @@ export default {
                         .setDescription('The channel to send the reaction role message to')
                         .setRequired(true)
                 )
+                .addAttachmentOption(option =>
+                    option.setName('image')
+                        .setDescription('An image to display in the reaction role panel')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option.setName('mode')
+                        .setDescription('How members select roles (default: dropdown menu)')
+                        .setRequired(false)
+                        .addChoices(
+                            { name: 'Dropdown Menu', value: 'dropdown' },
+                            { name: 'Emoji Reactions', value: 'reaction' },
+                        )
+                )
+                .addStringOption(option =>
+                    option.setName('emoji1')
+                        .setDescription('Emoji for role1 (reaction mode only; defaults to 1️⃣)')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option.setName('emoji2')
+                        .setDescription('Emoji for role2 (reaction mode only; defaults to 2️⃣)')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option.setName('emoji3')
+                        .setDescription('Emoji for role3 (reaction mode only; defaults to 3️⃣)')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option.setName('emoji4')
+                        .setDescription('Emoji for role4 (reaction mode only; defaults to 4️⃣)')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option.setName('emoji5')
+                        .setDescription('Emoji for role5 (reaction mode only; defaults to 5️⃣)')
+                        .setRequired(false)
+                )
                 .addStringOption(option =>
                     option.setName('title')
                         .setDescription('Title for the reaction role panel')
@@ -223,9 +262,14 @@ async function handleSetup(interaction) {
     }
     
     // Collect and validate roles
+    const mode = interaction.options.getString('mode') === 'reaction' ? 'reaction' : 'dropdown';
+    const DEFAULT_NUMBER_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
+
+    // Collect and validate roles
     const roles = [];
+    const roleEmojiPairs = [];
     const roleValidationErrors = [];
-    
+
     for (let i = 1; i <= 5; i++) {
         const role = interaction.options.getRole(`role${i}`);
         if (role) {
@@ -250,6 +294,43 @@ async function handleSetup(interaction) {
             }
             
             roles.push(role);
+
+            if (mode === 'reaction') {
+                const emojiOption = interaction.options.getString(`emoji${i}`);
+                roleEmojiPairs.push({ role, emojiRaw: emojiOption || DEFAULT_NUMBER_EMOJIS[i - 1] });
+            }
+        }
+    }
+
+    let emojiRoleMap = null;
+    let reactableEmojis = [];
+    if (mode === 'reaction') {
+        emojiRoleMap = {};
+        const usedKeys = new Set();
+
+        for (const { role, emojiRaw } of roleEmojiPairs) {
+            const parsed = parseEmoji(emojiRaw);
+            if (!parsed) {
+                throw createError(
+                    `Invalid emoji for role ${role.name}: ${emojiRaw}`,
+                    ErrorTypes.VALIDATION,
+                    `"${emojiRaw}" doesn't look like a valid emoji for **${role.name}**. Use a standard emoji or a custom server emoji.`,
+                    { emojiRaw, roleId: role.id }
+                );
+            }
+
+            if (usedKeys.has(parsed.key)) {
+                throw createError(
+                    `Duplicate emoji: ${emojiRaw}`,
+                    ErrorTypes.VALIDATION,
+                    `The emoji ${emojiRaw} is used for more than one role. Each role needs a unique emoji.`,
+                    { emojiRaw }
+                );
+            }
+
+            usedKeys.add(parsed.key);
+            emojiRoleMap[parsed.key] = role.id;
+            reactableEmojis.push(parsed.reactable);
         }
     }
     
@@ -281,21 +362,34 @@ async function handleSetup(interaction) {
     }
 
     // Create the reaction role message
-    const row = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-            .setCustomId('reaction_roles')
-            .setPlaceholder('Select your roles')
-            .setMinValues(0)
-            .setMaxValues(roles.length)
-            .addOptions(
-                roles.map(role => ({
-                    label: role.name,
-                    description: `Add/remove the ${role.name} role`,
-                    value: role.id,
-                    emoji: '🎭'
-                }))
-            )
-    );
+    // Create the reaction role message
+    const components = [];
+    let footerText = 'Select roles from the dropdown menu below';
+
+    if (mode === 'dropdown') {
+        const row = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId('reaction_roles')
+                .setPlaceholder('Select your roles')
+                .setMinValues(0)
+                .setMaxValues(roles.length)
+                .addOptions(
+                    roles.map(role => ({
+                        label: role.name,
+                        description: `Add/remove the ${role.name} role`,
+                        value: role.id,
+                        emoji: '🎭'
+                    }))
+                )
+        );
+        components.push(row);
+    } else {
+        footerText = 'React with an emoji below to get the matching role';
+    }
+
+    const roleListText = mode === 'reaction'
+        ? roleEmojiPairs.map(({ role, emojiRaw }) => `${emojiRaw} — ${role}`).join('\n')
+        : roles.map(role => `• ${role}`).join('\n');
 
     const panelEmbed = new EmbedBuilder()
         .setTitle(title)
@@ -303,14 +397,28 @@ async function handleSetup(interaction) {
         .setColor(getColor('info'))
         .addFields({
             name: 'Available Roles',
-            value: roles.map(role => `• ${role}`).join('\n')
+            value: roleListText
         })
-        .setFooter({ text: 'Select roles from the dropdown menu below' });
+        .setFooter({ text: footerText });
+
+    if (imageAttachment) {
+        panelEmbed.setImage(imageAttachment.url);
+    }
 
     const message = await channel.send({
         embeds: [panelEmbed],
-        components: [row]
+        components
     });
+
+    if (mode === 'reaction') {
+        for (const emoji of reactableEmojis) {
+            try {
+                await message.react(emoji);
+            } catch (error) {
+                logger.warn(`Failed to react with ${emoji} on reaction role panel ${message.id}:`, error.message);
+            }
+        }
+    }
 
     const roleIds = roles.map(role => role.id);
     await createReactionRoleMessage(
@@ -318,7 +426,8 @@ async function handleSetup(interaction) {
         interaction.guildId,
         channel.id,
         message.id,
-        roleIds
+        roleIds,
+        { mode, emojiRoleMap }
     );
     
     logger.info(`Reaction role message created: ${message.id} with ${roles.length} roles by ${interaction.user.tag}`);
@@ -600,7 +709,7 @@ async function showPanelDashboard(interaction, panelData, discordMsg, guildId, g
         .addFields(
             { name: '📍 Channel', value: channel ? `<#${channel.id}>` : '`Not found`', inline: true },
             { name: '🎭 Roles', value: `\`${panelData.roles.length} / 25\``, inline: true },
-            { name: '\u200B', value: '\u200B', inline: true },
+            { name: '⚙️ Mode', value: panelData.mode === 'reaction' ? 'Emoji Reactions' : 'Dropdown Menu', inline: true },
             { name: '🏷️ Role List', value: roleList, inline: false },
         )
         .setFooter({ text: 'Dashboard closes after 10 minutes of inactivity' })
@@ -729,6 +838,14 @@ async function handleEditText(buttonInteraction, rootInteraction, panelData, gui
 async function handleAddRole(selectInteraction, rootInteraction, panelData, guildId, guild, client) {
     await selectInteraction.deferUpdate();
 
+    if (panelData.mode === 'reaction') {
+        await selectInteraction.followUp({
+            embeds: [errorEmbed('Not Supported', 'Adding roles to emoji-reaction panels isn\'t supported yet. Delete this panel and create a new one with `/reactroles setup` to change its roles.')],
+            flags: MessageFlags.Ephemeral,
+        });
+        return;
+    }
+
     if (panelData.roles.length >= 25) {
         await selectInteraction.followUp({
             embeds: [errorEmbed('Panel Full', 'This panel already has the maximum of 25 roles.')],
@@ -847,6 +964,14 @@ async function handleAddRole(selectInteraction, rootInteraction, panelData, guil
 
 async function handleRemoveRole(selectInteraction, rootInteraction, panelData, panels, guildId, guild, client) {
     await selectInteraction.deferUpdate();
+
+    if (panelData.mode === 'reaction') {
+        await selectInteraction.followUp({
+            embeds: [errorEmbed('Not Supported', 'Removing roles from emoji-reaction panels isn\'t supported yet. Delete this panel and create a new one with `/reactroles setup` to change its roles.')],
+            flags: MessageFlags.Ephemeral,
+        });
+        return;
+    }
 
     const roleOptions = panelData.roles
         .map(id => {
