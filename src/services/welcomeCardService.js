@@ -1,5 +1,27 @@
-import { createCanvas, loadImage } from '@napi-rs/canvas';
+import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
+import { fileURLToPath } from 'url';
+import path from 'path';
 import { logger } from '../utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const FONT_PATH = path.join(__dirname, '../assets/fonts/NotoSansCJK-SC-Bold.otf');
+const FONT_FAMILY = 'TazzWelcome';
+
+let fontRegistered = false;
+try {
+    fontRegistered = GlobalFonts.registerFromPath(FONT_PATH, FONT_FAMILY);
+    if (fontRegistered) {
+        logger.info('[WelcomeCard] Custom font registered successfully.');
+    } else {
+        logger.warn('[WelcomeCard] Custom font failed to register, falling back to default font.');
+    }
+} catch (err) {
+    logger.warn(`[WelcomeCard] Could not load custom font: ${err.message}`);
+}
+
+const FONT_FALLBACK = fontRegistered ? FONT_FAMILY : 'sans-serif';
 
 const CARD_WIDTH = 900;
 const CARD_HEIGHT = 350;
@@ -89,7 +111,7 @@ export async function generateWelcomeCard({
 
     // ── Member badge (top center) ──
     const badgeText = `Member #${memberNumber}`;
-    ctx.font = 'bold 22px sans-serif';
+    ctx.font = `bold 22px ${FONT_FALLBACK}`;
     const badgeTextWidth = ctx.measureText(badgeText).width;
     const badgeWidth = badgeTextWidth + 50;
     const badgeX = (CARD_WIDTH - badgeWidth) / 2;
@@ -155,19 +177,29 @@ export async function generateWelcomeCard({
     // ── Welcome text ──
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 34px sans-serif';
+    ctx.font = `bold 34px ${FONT_FALLBACK}`;
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = 8;
-    ctx.fillText(`Welcome ${truncate(username, 20)}`, CARD_WIDTH / 2, 300);
+    ctx.fillText(`Welcome ${truncate(normalizeText(username), 20)}`, CARD_WIDTH / 2, 300);
 
-    ctx.font = '22px sans-serif';
+    ctx.font = `22px ${FONT_FALLBACK}`;
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
     ctx.shadowBlur = 4;
-    ctx.fillText(`to ${truncate(serverName, 30)}`, CARD_WIDTH / 2, 332);
+    ctx.fillText(`to ${truncate(normalizeText(serverName), 30)}`, CARD_WIDTH / 2, 332);
 
     return canvas.encode('png');
 }
 
 function truncate(str, max) {
     return str.length > max ? str.slice(0, max - 1) + '…' : str;
+}
+
+/**
+ * Converts "fancy text generator" Unicode letters (𝕫, 𝐚, ℤ, Ⓣ, Ｔ, etc.) to
+ * plain ASCII so they render correctly on canvas — the bundled font only
+ * has glyphs for standard Latin characters. Real CJK/emoji characters are
+ * left as-is since they aren't decomposable this way.
+ */
+function normalizeText(str) {
+    return str.normalize('NFKD');
 }
