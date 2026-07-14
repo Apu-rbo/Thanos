@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, Collection, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import { REST } from '@discordjs/rest';
 import express from 'express';
 import cron from 'node-cron';
@@ -13,6 +13,7 @@ import { logger, startupLog, shutdownLog } from './utils/logger.js';
 import { checkBirthdays } from './services/birthdayService.js';
 import { checkGiveaways } from './services/giveawayService.js';
 import { loadCommands, registerCommands as registerSlashCommands } from './handlers/commandLoader.js';
+import { setupReactionRoleListeners } from './handlers/reactionRoles.js';
 
 class TitanBot extends Client {
   constructor() {
@@ -31,6 +32,11 @@ class TitanBot extends Client {
         
         
         GatewayIntentBits.GuildBans,                    
+      ],
+      partials: [
+        Partials.Message,
+        Partials.Reaction,
+        Partials.User,
       ],
     });
 
@@ -80,6 +86,8 @@ class TitanBot extends Client {
       startupLog('Loading handlers...');
       await this.loadHandlers();
       startupLog('Handlers loaded');
+
+      setupReactionRoleListeners(this);
       
       startupLog('Logging into Discord...');
       await this.login(this.config.bot.token);
@@ -383,5 +391,3 @@ try {
 }
 
 export default TitanBot;
-
-
