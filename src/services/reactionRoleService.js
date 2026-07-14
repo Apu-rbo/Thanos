@@ -83,6 +83,31 @@ export function hasDangerousPermissions(role) {
     return false;
 }
 
+/**
+ * Parse a user-supplied emoji string into a stable lookup key + a reactable form.
+ * Accepts standard unicode emoji and custom guild emoji (<:name:id> or <a:name:id>).
+ * Returns null if the string isn't a valid single emoji.
+ */
+export function parseEmoji(emojiString) {
+    if (!emojiString || typeof emojiString !== 'string') return null;
+
+    const trimmed = emojiString.trim();
+
+    // Custom guild emoji: <:name:id> or animated <a:name:id>
+    const customMatch = trimmed.match(/^<a?:\w+:(\d+)>$/);
+    if (customMatch) {
+        return { key: customMatch[1], reactable: trimmed };
+    }
+
+    // Standard unicode emoji (single grapheme, optional variation selector)
+    const unicodeEmojiPattern = /^(\p{Extended_Pictographic}|\p{Emoji_Presentation})(\uFE0F)?$/u;
+    if (unicodeEmojiPattern.test(trimmed)) {
+        return { key: trimmed, reactable: trimmed };
+    }
+
+    return null;
+}
+
 async function validateRoleSafety(client, guildId, roleId) {
     const guild = client.guilds?.cache?.get(guildId) || await client.guilds?.fetch?.(guildId).catch(() => null);
     if (!guild) {
@@ -154,17 +179,19 @@ export async function getReactionRoleMessage(client, guildId, messageId) {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-export async function createReactionRoleMessage(client, guildId, channelId, messageId, roleIds) {
+/**
+ * Create a new reaction role message record.
+ * @param {Object} client - The Discord client
+ * @param {string} guildId
+ * @param {string} channelId
+ * @param {string} messageId
+ * @param {string[]} roleIds
+ * @param {Object} [options]
+ * @param {'dropdown'|'reaction'} [options.mode='dropdown']
+ * @param {Object.<string,string>} [options.emojiRoleMap] - emoji key -> roleId, required when mode === 'reaction'
+ * @param {string} [options.imageUrl] - image URL to show in the panel embed
+ */
+export async function createReactionRoleMessage(client, guildId, channelId, messageId, roleIds, options = {}) {
     try {
         validateGuildId(guildId);
         validateMessageId(messageId);
@@ -196,24 +223,34 @@ export async function createReactionRoleMessage(client, guildId, channelId, mess
             );
         }
         
-        
         for (const roleId of roleIds) {
             validateRoleId(roleId);
             await validateRoleSafety(client, guildId, roleId);
         }
-        
+
+        const mode = options.mode === 'reaction' ? 'reaction' : 'dropdown';
+
         const reactionRoleData = {
             guildId,
             channelId,
             messageId,
             roles: roleIds,
+            mode,
             createdAt: new Date().toISOString()
         };
+
+        if (mode === 'reaction' && options.emojiRoleMap) {
+            reactionRoleData.emojiRoleMap = options.emojiRoleMap;
+        }
+
+        if (options.imageUrl) {
+            reactionRoleData.imageUrl = options.imageUrl;
+        }
         
         const key = `reaction_roles:${guildId}:${messageId}`;
         await client.db.set(key, reactionRoleData);
         
-        logger.info(`Created reaction role message ${messageId} in guild ${guildId} with ${roleIds.length} roles`);
+        logger.info(`Created reaction role message ${messageId} in guild ${guildId} with ${roleIds.length} roles (mode: ${mode})`);
         return reactionRoleData;
     } catch (error) {
         if (error.name === 'TitanBotError') {
@@ -586,4 +623,3 @@ export async function reconcileReactionRoleMessages(client, guildId = null) {
         return summary;
     }
 }
-
