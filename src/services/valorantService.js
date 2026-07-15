@@ -33,9 +33,9 @@ const ALL_RANK_ROLE_NAMES = Object.values(RANK_TO_ROLE);
 
 function henrikHeaders() {
     const headers = { Accept: 'application/json' };
-    if (process.env.HENRIKDEV_API_KEY) {
-        headers.Authorization = process.env.HENRIKDEV_API_KEY;
-    }
+    if (process.env.HENRIK_API_KEY) {
+    headers.Authorization = process.env.HENRIK_API_KEY;
+}
     return headers;
 }
 
