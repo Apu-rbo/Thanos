@@ -34,8 +34,8 @@ const ALL_RANK_ROLE_NAMES = Object.values(RANK_TO_ROLE);
 function henrikHeaders() {
     const headers = { Accept: 'application/json' };
     if (process.env.HENRIK_API_KEY) {
-    headers.Authorization = process.env.HENRIK_API_KEY;
-}
+        headers.Authorization = process.env.HENRIK_API_KEY;
+    }
     return headers;
 }
 
@@ -327,7 +327,7 @@ export async function assignRankRole(guild, member, tierName) {
 
 // ─── HenrikDev Data Fetching ───────────────────────────────────────────────
 
-async function fetchCurrentMMR(name, tag, region) {
+export async function fetchCurrentMMR(name, tag, region) {
     const data = await henrikFetch(`/valorant/v2/mmr/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`);
     const current = data?.data?.current_data;
     if (!current) return null;
@@ -368,6 +368,46 @@ async function fetchLatestMatch(name, tag, region, puuid) {
     }
 
     return { matchId, map, mode, result, kills, deaths, assists };
+}
+
+/**
+ * Immediately fetch current rank and assign the matching role for a
+ * freshly-tracked account, instead of waiting for the next cron sweep.
+ * Also persists the fetched tier as a baseline so the next sweep doesn't
+ * treat it as a "first check" and skip posting a real update later.
+ * @param {import('discord.js').Guild} guild
+ * @param {Object} record - the tracked account record returned by trackAccount()
+ * @returns {Promise<{ mmr: Object|null, roleResult: Object|null }>}
+ */
+export async function refreshAccountNow(client, guild, record) {
+    let mmr = null;
+    try {
+        mmr = await fetchCurrentMMR(record.riotName, record.riotTag, record.region);
+    } catch (error) {
+        logger.warn(`[Valorant] Instant check failed for ${record.riotName}#${record.riotTag}:`, error.message);
+        return { mmr: null, roleResult: null };
+    }
+
+    if (!mmr) return { mmr: null, roleResult: null };
+
+    let roleResult = null;
+    if (record.autoRole && record.linkedDiscordId) {
+        const member = await guild.members.fetch(record.linkedDiscordId).catch(() => null);
+        if (member) {
+            roleResult = await assignRankRole(guild, member, mmr.tierName);
+        }
+    }
+
+    const key = `valorant_tracked:${guild.id}:${riotKey(record.riotName, record.riotTag)}`;
+    await client.db.set(key, {
+        ...record,
+        lastTierId: mmr.tierId,
+        lastTierName: mmr.tierName,
+        lastRR: mmr.rr,
+        lastRoleAssigned: roleResult?.success ? roleResult.roleName : record.lastRoleAssigned,
+    });
+
+    return { mmr, roleResult };
 }
 
 // ─── Embeds ─────────────────────────────────────────────────────────────────
