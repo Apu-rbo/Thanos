@@ -12,6 +12,7 @@ import {
     untrackAccount,
     updateAccountSettings,
     getTrackedAccounts,
+    refreshAccountNow,
     VALORANT_RANK_ROLE_NAMES,
 } from '../../services/valorantService.js';
 
@@ -240,15 +241,34 @@ async function handleTrack(interaction) {
 
     logger.info(`${interaction.user.tag} started tracking Valorant account ${parsed.name}#${parsed.tag} in guild ${interaction.guild.name}`);
 
-    const roleNote = record.autoRole
-        ? `\n\n🏷️ Rank roles will be automatically assigned to ${targetUser}. Make sure roles named ${VALORANT_RANK_ROLE_NAMES.slice(0, 3).join(', ')}, etc. already exist in this server.`
-        : '';
+    // Instantly check rank + assign role right now, instead of waiting for the next cron sweep.
+    const { mmr, roleResult } = await refreshAccountNow(interaction.client, interaction.guild, record);
+
+    let statusLines = [];
+
+    if (mmr) {
+        statusLines.push(`🎯 Current rank: **${mmr.tierName}** (${mmr.rr} RR)`);
+    } else {
+        statusLines.push('⚠️ Could not fetch a current rank yet — this account may have no ranked games this act. Roles/updates will keep retrying automatically.');
+    }
+
+    if (record.autoRole) {
+        if (roleResult?.success) {
+            statusLines.push(`🏷️ Role assigned: **${roleResult.roleName}** → ${targetUser}`);
+        } else if (roleResult) {
+            statusLines.push(`⚠️ Role not assigned: ${roleResult.reason}`);
+        } else if (mmr) {
+            statusLines.push(`⚠️ Role not assigned — could not find ${targetUser} in this server.`);
+        }
+    } else {
+        statusLines.push(`🏷️ Auto-role is off for this account. Roles named ${VALORANT_RANK_ROLE_NAMES.slice(0, 3).join(', ')}, etc. must exist to use it.`);
+    }
 
     await InteractionHelper.safeEditReply(interaction, {
         embeds: [
             successEmbed(
                 '✅ Now Tracking',
-                `**${record.riotName}#${record.riotTag}** (${region.toUpperCase()}) is now being tracked. Updates will be posted to <#${logChannelId}>.${roleNote}`
+                `**${record.riotName}#${record.riotTag}** (${region.toUpperCase()}) is now being tracked.\n\n${statusLines.join('\n')}\n\nOngoing updates will be posted to <#${logChannelId}> every ~15 minutes.`
             ),
         ],
     });
