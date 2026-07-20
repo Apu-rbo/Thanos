@@ -82,16 +82,26 @@ export default {
 
     async execute(interaction) {
         const subcommand    = interaction.options.getSubcommand();
-        const messageContent = interaction.options.getString('message');
         const useEmbed      = interaction.options.getBoolean('embed') ?? false;
         const embedTitle    = interaction.options.getString('embed_title');
         const embedColorRaw = interaction.options.getString('embed_color') ?? '#5865F2';
+
+        // Discord's text option is single-line — users can't press Enter directly,
+        // so \n and \t typed literally get converted to real line breaks/tabs.
+        const rawContent = interaction.options.getString('message');
+        const messageContent = rawContent
+            .replace(/\\n/g, '\n')
+            .replace(/\\t/g, '\t');
 
         let embedColor = 0x5865F2;
         try {
             const parsed = parseInt(embedColorRaw.replace('#', ''), 16);
             if (!isNaN(parsed)) embedColor = parsed;
         } catch { /* fallback to default */ }
+
+        // Allow @everyone/@here/role pings if the sender genuinely typed them —
+        // Discord suppresses these by default unless explicitly allowed.
+        const allowedMentions = { parse: ['everyone', 'roles', 'users'] };
 
         let payload;
         if (useEmbed) {
@@ -101,9 +111,9 @@ export default {
                 .setTimestamp()
                 .setFooter({ text: `Sent by ${interaction.user.tag}` });
             if (embedTitle) embed.setTitle(embedTitle);
-            payload = { embeds: [embed] };
+            payload = { embeds: [embed], allowedMentions };
         } else {
-            payload = { content: messageContent };
+            payload = { content: messageContent, allowedMentions };
         }
 
         // ── CHANNEL ──
