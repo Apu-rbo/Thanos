@@ -9,6 +9,45 @@ import { logEvent, EVENT_TYPES } from '../../services/loggingService.js';
 
 const DEFAULT_NUMBER_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
 
+// Discord API error codes that mean "this genuinely no longer exists" —
+// anything else (rate limits, network blips, cold cache right after a
+// restart) must NOT be treated as confirmed deletion, or we permanently
+// wipe working panels from the database over a transient hiccup.
+const UNKNOWN_MESSAGE_CODE = 10008;
+const UNKNOWN_CHANNEL_CODE = 10003;
+
+/**
+ * Fetch a channel via the API (not the possibly-stale cache) and fetch its
+ * message, returning whether the panel is CONFIRMED gone vs. just
+ * temporarily unreachable. Only confirmed-gone panels should be deleted
+ * from storage.
+ */
+async function resolvePanelMessage(guild, channelId, messageId) {
+    let channel;
+    try {
+        channel = await guild.channels.fetch(channelId);
+    } catch (error) {
+        if (error?.code === UNKNOWN_CHANNEL_CODE) {
+            return { message: null, confirmedGone: true };
+        }
+        return { message: null, confirmedGone: false };
+    }
+
+    if (!channel) {
+        return { message: null, confirmedGone: true };
+    }
+
+    try {
+        const message = await channel.messages.fetch(messageId);
+        return { message, confirmedGone: false, channel };
+    } catch (error) {
+        if (error?.code === UNKNOWN_MESSAGE_CODE) {
+            return { message: null, confirmedGone: true, channel };
+        }
+        return { message: null, confirmedGone: false, channel };
+    }
+}
+
 export default {
     data: new SlashCommandBuilder()
         .setName('reactroles')
@@ -154,7 +193,9 @@ export default {
 
             const guild = interaction.guild;
             
-            // Filter out panels whose messages no longer exist and clean up stale data
+            // Filter out panels whose messages are confirmed deleted, and
+            // clean up ONLY those — leave anything uncertain alone so a
+            // transient failure never wipes real data.
             const validPanels = [];
             for (const panel of panels) {
                 // Validate panel structure
@@ -162,17 +203,19 @@ export default {
                     continue;
                 }
 
-                const channel = guild.channels.cache.get(panel.channelId);
-                if (!channel) {
+                const { message, confirmedGone } = await resolvePanelMessage(guild, panel.channelId, panel.messageId);
+
+                if (confirmedGone) {
                     await deleteReactionRoleMessage(client, guildId, panel.messageId).catch(() => {});
                     continue;
                 }
-                
-                const msg = await channel.messages.fetch(panel.messageId).catch(() => null);
-                if (!msg) {
-                    await deleteReactionRoleMessage(client, guildId, panel.messageId).catch(() => {});
+
+                if (!message) {
+                    // Temporarily unreachable — skip showing it this time,
+                    // but keep the database record intact.
                     continue;
                 }
+
                 validPanels.push(panel);
             }
 
@@ -531,20 +574,22 @@ async function handleDashboard(interaction, selectedPanelId) {
         });
     }
 
-    // Filter out panels whose messages no longer exist
+    // Filter out panels whose messages are confirmed deleted — leave
+    // anything uncertain alone so a transient failure never wipes real data.
     const validPanels = [];
     for (const panel of panels) {
-        const channel = guild.channels.cache.get(panel.channelId);
-        if (!channel) {
+        const { message, confirmedGone } = await resolvePanelMessage(guild, panel.channelId, panel.messageId);
+
+        if (confirmedGone) {
             await deleteReactionRoleMessage(client, guildId, panel.messageId).catch(() => {});
             continue;
         }
-        
-        const msg = await channel.messages.fetch(panel.messageId).catch(() => null);
-        if (!msg) {
-            await deleteReactionRoleMessage(client, guildId, panel.messageId).catch(() => {});
+
+        if (!message) {
+            // Temporarily unreachable — skip this time, keep the record.
             continue;
         }
+
         validPanels.push(panel);
     }
 
