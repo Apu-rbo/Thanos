@@ -2,6 +2,7 @@ import { Events } from 'discord.js';
 import { logger } from '../utils/logger.js';
 import { checkRateLimit } from '../utils/rateLimiter.js';
 import { handleLeveling } from '../services/leveling.js';
+import { handleScamGuard } from '../services/scamGuardService.js';
 
 const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
 const MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
