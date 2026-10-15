@@ -12,6 +12,7 @@ export default {
     async execute(message, client) {
         try {
             if (message.author.bot || !message.guild) return;
+            if (await handleScamGuard(message, client)) return;
             await handleLeveling(message, client);
         } catch (error) {
             logger.error('Error in messageCreate event:', error);
